@@ -156,6 +156,10 @@ pub async fn run_contest(
     if contest.counts.is_empty() {
         announcement.delete(&ctx.http).await?;
     } else {
+        if pin_announcement {
+            announcement.unpin(&ctx.http).await?;
+        }
+
         // send ranking message
         channel_id
             .send_message(&ctx.http, |m| {
@@ -175,10 +179,6 @@ pub async fn run_contest(
                 })
             })
             .await?;
-    }
-
-    if pin_announcement {
-        announcement.unpin(&ctx.http).await?;
     }
 
     Ok(())
