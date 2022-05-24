@@ -41,9 +41,9 @@ impl EventHandler for Handler {
                 .content
                 .split_ascii_whitespace()
                 .filter_map(|w| w.parse().ok())
-                .next()
                 .map(Duration::from_secs)
                 .filter(|d| ALLOWED_DURATION_RANGE.contains(d))
+                .next()
                 .unwrap_or(DEFAULT_CONTEST_DURATION);
 
             if let Err(err) = run_contest(
