@@ -34,13 +34,13 @@ async fn main() {
 
     let shard_manager = client.shard_manager.clone();
     tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.expect("ctrc+c handler error");
+        tokio::signal::ctrl_c().await.expect("ctrl+c handler error");
         debug!("Shutting down...");
         shard_manager.lock().await.shutdown_all().await;
     });
 
     if let Err(err) = client.start().await {
-        error!("An Error occurred while running the client: {:?}", err);
+        error!("An error occurred while running the client: {:?}", err);
         process::exit(2);
     }
 }
