@@ -1,7 +1,10 @@
 use log::{debug, error, LevelFilter};
 use serenity::prelude::*;
 use spamcontest::Handler;
-use std::{env, process};
+use std::{env, io, process};
+
+#[cfg(unix)]
+use tokio::pin;
 
 const TOKEN_VAR_KEY: &str = "DISCORD_TOKEN";
 
@@ -34,7 +37,10 @@ async fn main() {
 
     let shard_manager = client.shard_manager.clone();
     tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.expect("ctrl+c handler error");
+        wait_for_shutdown_signal()
+            .await
+            .expect("error on waiting for shutdown signal");
+
         debug!("Shutting down...");
         shard_manager.lock().await.shutdown_all().await;
     });
@@ -43,4 +49,29 @@ async fn main() {
         error!("An error occurred while running the client: {}", err);
         process::exit(2);
     }
+}
+
+async fn wait_for_shutdown_signal() -> io::Result<()> {
+    let ctrl_c = tokio::signal::ctrl_c();
+
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix;
+
+        let sigterm = async {
+            unix::signal(unix::SignalKind::terminate())?.recv().await;
+            Ok(())
+        };
+
+        pin!(ctrl_c);
+        pin!(sigterm);
+
+        tokio::select! {
+            result = &mut ctrl_c => { result }
+            result = &mut sigterm => { result }
+        }
+    }
+
+    #[cfg(not(unix))]
+    ctrl_c.await
 }
