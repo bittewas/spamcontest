@@ -30,7 +30,7 @@ async fn main() {
     {
         Ok(client) => client,
         Err(err) => {
-            error!("Unable to start client: {:?}", err);
+            error!("Unable to start client: {}", err);
             process::exit(2);
         }
     };
