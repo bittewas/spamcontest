@@ -40,7 +40,7 @@ async fn main() {
     });
 
     if let Err(err) = client.start().await {
-        error!("An error occurred while running the client: {:?}", err);
+        error!("An error occurred while running the client: {}", err);
         process::exit(2);
     }
 }

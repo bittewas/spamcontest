@@ -78,7 +78,7 @@ impl EventHandler for Handler {
                     contest.counts.len()
                 ),
                 Err(err) => error!(
-                    "Error while running contest in channel {}: {:?}",
+                    "Error while running contest in channel {}: {}",
                     msg.channel_id.0, err
                 ),
             };
