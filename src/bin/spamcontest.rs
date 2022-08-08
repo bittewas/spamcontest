@@ -1,12 +1,13 @@
 use log::{debug, error, LevelFilter};
 use serenity::prelude::*;
 use spamcontest::Handler;
-use std::{env, io, process};
+use std::process::ExitCode;
+use std::{env, io};
 
 const TOKEN_VAR_KEY: &str = "DISCORD_TOKEN";
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     env_logger::builder()
         .filter_module(module_path!(), LevelFilter::Info)
         .parse_default_env()
@@ -16,7 +17,7 @@ async fn main() {
         Ok(token) => token,
         Err(err) => {
             error!("Unable to get {}: {}", TOKEN_VAR_KEY, err);
-            process::exit(1);
+            return ExitCode::FAILURE;
         }
     };
 
@@ -28,7 +29,7 @@ async fn main() {
         Ok(client) => client,
         Err(err) => {
             error!("Unable to start client: {}", err);
-            process::exit(2);
+            return ExitCode::FAILURE;
         }
     };
 
@@ -42,9 +43,12 @@ async fn main() {
         shard_manager.lock().await.shutdown_all().await;
     });
 
-    if let Err(err) = client.start().await {
-        error!("An error occurred while running the client: {}", err);
-        process::exit(2);
+    match client.start().await {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(err) => {
+            error!("An error occurred while running the client: {}", err);
+            ExitCode::FAILURE
+        }
     }
 }
 
