@@ -3,9 +3,6 @@ use serenity::prelude::*;
 use spamcontest::Handler;
 use std::{env, io, process};
 
-#[cfg(unix)]
-use tokio::pin;
-
 const TOKEN_VAR_KEY: &str = "DISCORD_TOKEN";
 
 #[tokio::main]
@@ -63,12 +60,9 @@ async fn wait_for_shutdown_signal() -> io::Result<()> {
             Ok(())
         };
 
-        pin!(ctrl_c);
-        pin!(sigterm);
-
         tokio::select! {
-            result = &mut ctrl_c => { result }
-            result = &mut sigterm => { result }
+            result = ctrl_c => { result }
+            result = sigterm => { result }
         }
     }
 
