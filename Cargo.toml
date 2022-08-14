@@ -11,6 +11,7 @@ env_logger = "0.9"
 chrono = "0.4"
 itertools = "0.10"
 tokio = {version = "1.20", features = ["rt-multi-thread", "signal"]}
+dashmap = "5.3.4"
 
 [dependencies.serenity]
 version = "0.11"

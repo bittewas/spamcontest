@@ -1,3 +1,4 @@
+use dashmap::DashMap;
 use itertools::Itertools;
 use log::{debug, error, info};
 use serenity::client::{Context, EventHandler};
@@ -10,8 +11,8 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::ops::RangeInclusive;
-use std::sync::Mutex;
 use std::time::Duration;
+use tokio::sync::mpsc;
 
 const DEFAULT_CONTEST_DURATION: Duration = Duration::from_secs(60);
 
@@ -20,7 +21,7 @@ const ALLOWED_DURATION_RANGE: RangeInclusive<Duration> =
 
 const PIN_ANNOUNCEMENT_THRESHOLD: Duration = Duration::from_secs(5 * 60);
 
-type Contests = Mutex<HashMap<ChannelId, Contest>>;
+type Contests = DashMap<ChannelId, mpsc::Sender<Message>>;
 
 #[derive(Default)]
 pub struct Handler {
@@ -36,14 +37,14 @@ impl Handler {
 #[serenity::async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
-        if let Some(contest) = self.contests.lock().unwrap().get_mut(&msg.channel_id) {
+        if let Some(contest) = self.contests.get(&msg.channel_id) {
             debug!(
                 "Counting message {} (from {} in channel {})",
                 msg.id,
                 msg.author.tag(),
                 msg.channel_id.0
             );
-            contest.count(&msg);
+            contest.value().send(msg).await.unwrap();
             return;
         }
 
@@ -183,11 +184,25 @@ async fn run_contest(
         announcement.pin(&ctx.http).await.ok();
     }
 
-    contests.lock().unwrap().insert(channel_id, Contest::new());
-    tokio::time::sleep(duration).await;
-    let contest = contests.lock().unwrap().remove(&channel_id).unwrap();
+    let mut counts = Contest::new();
 
-    if contest.counts.is_empty() {
+    {
+        let (tx, mut rx) = mpsc::channel(8);
+        contests.insert(channel_id, tx);
+
+        tokio::select! {
+            _ = tokio::time::sleep(duration) => {},
+            _ = async {
+                while let Some(msg) = rx.recv().await {
+                    counts.count(&msg);
+                }
+            } => { unreachable!("mpsc receiver closed unexpectedly") },
+        }
+
+        contests.remove(&channel_id);
+    }
+
+    if counts.counts.is_empty() {
         announcement.delete(&ctx.http).await?;
     } else {
         if pin {
@@ -202,12 +217,12 @@ async fn run_contest(
                         .colour(Colour::DARK_GREEN)
                         .field(
                             "Ergebnisse (nach Nachrichten):",
-                            contest.ranking_by(|c| Reverse(c.messages), |c| c.messages),
+                            counts.ranking_by(|c| Reverse(c.messages), |c| c.messages),
                             false,
                         )
                         .field(
                             "Ergebnisse (nach Zeichen):",
-                            contest.ranking_by(|c| Reverse(c.characters), |c| c.characters),
+                            counts.ranking_by(|c| Reverse(c.characters), |c| c.characters),
                             false,
                         )
                 })
@@ -215,5 +230,5 @@ async fn run_contest(
             .await?;
     }
 
-    Ok(contest)
+    Ok(counts)
 }

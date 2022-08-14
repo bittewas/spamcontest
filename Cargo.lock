@@ -965,6 +965,7 @@ name = "spamcontest"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dashmap",
  "env_logger",
  "itertools",
  "log",
