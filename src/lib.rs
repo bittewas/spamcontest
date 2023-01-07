@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::ops::RangeInclusive;
 use std::time::Duration;
+use time::OffsetDateTime;
 use tokio::sync::mpsc;
 
 const DEFAULT_CONTEST_DURATION: Duration = Duration::from_secs(60);
@@ -164,8 +165,7 @@ async fn run_contest(
     contests: &Contests,
     pin: bool,
 ) -> serenity::Result<Contest> {
-    let end_timestamp =
-        (chrono::Utc::now() + chrono::Duration::from_std(duration).unwrap()).timestamp() + 1;
+    let end_timestamp = (OffsetDateTime::now_utc() + duration).unix_timestamp();
 
     // send announcement message
     let announcement = channel_id
