@@ -10,7 +10,7 @@ log = "0.4"
 env_logger = "0.10.0"
 time = "0.3.17"
 itertools = "0.10"
-tokio = {version = "1.20", features = ["rt-multi-thread", "signal"]}
+tokio = {version = "1.24", features = ["rt-multi-thread", "signal"]}
 dashmap = "5.3.4"
 
 [dependencies.serenity]
