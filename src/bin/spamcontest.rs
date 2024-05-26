@@ -40,7 +40,7 @@ async fn main() -> ExitCode {
             .expect("error on waiting for shutdown signal");
 
         debug!("Shutting down...");
-        shard_manager.lock().await.shutdown_all().await;
+        shard_manager.shutdown_all().await;
     });
 
     match client.start().await {

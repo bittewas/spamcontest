@@ -7,13 +7,13 @@ edition = "2021"
 
 [dependencies]
 log = "0.4"
-env_logger = "0.10.0"
-time = "0.3.17"
-itertools = "0.10"
-tokio = {version = "1.20", features = ["rt-multi-thread", "signal"]}
-dashmap = "5.3.4"
+env_logger = "0.11.3"
+time = "0.3.36"
+itertools = "0.13"
+tokio = {version = "1.37", features = ["rt-multi-thread", "signal"]}
+dashmap = "5.5.3"
 
 [dependencies.serenity]
-version = "0.11"
+version = "0.12"
 default-features = false
 features = ["builder", "cache", "client", "gateway", "http", "model", "utils", "rustls_backend"]

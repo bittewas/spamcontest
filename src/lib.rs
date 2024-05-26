@@ -1,12 +1,13 @@
 use dashmap::DashMap;
 use itertools::Itertools;
 use log::{debug, error, info};
+use serenity::all::{ActivityData, CreateEmbed, CreateMessage};
 use serenity::client::{Context, EventHandler};
 use serenity::model::channel::Message;
+use serenity::model::colour::Colour;
 use serenity::model::event::ResumedEvent;
-use serenity::model::gateway::{Activity, Ready};
+use serenity::model::gateway::Ready;
 use serenity::model::id::{ChannelId, UserId};
-use serenity::utils::Colour;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -43,7 +44,7 @@ impl EventHandler for Handler {
                 "Counting message {} (from {} in channel {})",
                 msg.id,
                 msg.author.tag(),
-                msg.channel_id.0
+                msg.channel_id.get()
             );
             contest.value().send(msg).await.unwrap();
             return;
@@ -62,7 +63,7 @@ impl EventHandler for Handler {
                 "User {} started a {} second contest in channel {}",
                 msg.author.tag(),
                 duration.as_secs(),
-                msg.channel_id.0
+                msg.channel_id.get()
             );
 
             match run_contest(
@@ -76,12 +77,13 @@ impl EventHandler for Handler {
             {
                 Ok(contest) => debug!(
                     "Contest in channel {} has ended with {} participant(s)",
-                    msg.channel_id.0,
+                    msg.channel_id.get(),
                     contest.counts.len()
                 ),
                 Err(err) => error!(
                     "Error while running contest in channel {}: {}",
-                    msg.channel_id.0, err
+                    msg.channel_id.get(),
+                    err
                 ),
             };
         }
@@ -89,7 +91,7 @@ impl EventHandler for Handler {
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         info!("Connected as {}", ready.user.tag());
-        ctx.set_activity(Activity::listening("Spam")).await;
+        ctx.set_activity(Some(ActivityData::listening("Spam")));
     }
 
     async fn resume(&self, _ctx: Context, _: ResumedEvent) {
@@ -144,7 +146,7 @@ impl Contest {
 
         let mut result = String::new();
         let mut cur_rank_num = 1;
-        for (_, rank_group) in &ranking.into_iter().group_by(|elt| fk((*elt).1)) {
+        for (_, rank_group) in &ranking.into_iter().chunk_by(|elt| fk((elt).1)) {
             let mut group_size = 0;
             for (userid, count) in rank_group {
                 result.push_str(
@@ -169,15 +171,17 @@ async fn run_contest(
 
     // send announcement message
     let announcement = channel_id
-        .send_message(&ctx.http, |m| {
-            m.embed(|e| {
-                e.title("Es wurde ein Spam-Wettbewerb gestartet!")
+        .send_message(
+            &ctx.http,
+            CreateMessage::new().add_embed(
+                CreateEmbed::new()
+                    .title("Es wurde ein Spam-Wettbewerb gestartet!")
                     .description(format!(
                         "Wer am meisten spamt, gewinnt.\nEnde <t:{end_timestamp}:R>.",
                     ))
-                    .colour(Colour::BLUE)
-            })
-        })
+                    .colour(Colour::BLUE),
+            ),
+        )
         .await?;
 
     if pin {
@@ -211,9 +215,11 @@ async fn run_contest(
 
         // send ranking message
         channel_id
-            .send_message(&ctx.http, |m| {
-                m.embed(|e| {
-                    e.title("Der Wettbewerb ist beendet!")
+            .send_message(
+                &ctx.http,
+                CreateMessage::new().add_embed(
+                    CreateEmbed::new()
+                        .title("Der Wettbewerb ist beendet!")
                         .colour(Colour::DARK_GREEN)
                         .field(
                             "Ergebnisse (nach Nachrichten):",
@@ -224,9 +230,9 @@ async fn run_contest(
                             "Ergebnisse (nach Zeichen):",
                             counts.ranking_by(|c| Reverse(c.characters), |c| c.characters),
                             false,
-                        )
-                })
-            })
+                        ),
+                ),
+            )
             .await?;
     }
 
